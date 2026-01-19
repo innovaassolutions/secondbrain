@@ -187,8 +187,13 @@ export async function POST(request: NextRequest) {
 
       console.log("Processing capture:", { text: messageText, channel: channelId });
 
-      // Process asynchronously to respond quickly to Slack
-      processCapture(messageText, channelId, messageTs).catch(console.error);
+      // Process and wait for completion before returning
+      // Slack allows up to 3 seconds, but will retry if we're slow
+      try {
+        await processCapture(messageText, channelId, messageTs);
+      } catch (error) {
+        console.error("Capture processing failed:", error);
+      }
 
       return NextResponse.json({ ok: true });
     }
