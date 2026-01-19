@@ -37,3 +37,15 @@ export async function addReaction(
     name: emoji,
   });
 }
+
+export async function pinMessage(channel: string, timestamp: string) {
+  if (!slack) {
+    console.error("Slack client not initialized - SLACK_BOT_TOKEN missing");
+    return null;
+  }
+
+  return await slack.pins.add({
+    channel,
+    timestamp,
+  });
+}
