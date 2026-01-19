@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
+import { classifyThought, ClassificationResult } from "@/lib/classify";
+import { sendSlackMessage, addReaction } from "@/lib/slack";
+import { convex, api } from "@/lib/convex";
 
 const SLACK_SIGNING_SECRET = process.env.SLACK_SIGNING_SECRET || "";
+const CONFIDENCE_THRESHOLD = parseFloat(
+  process.env.CONFIDENCE_THRESHOLD || "0.6"
+);
 
 function verifySlackRequest(
   body: string,
@@ -32,6 +38,126 @@ function verifySlackRequest(
   );
 }
 
+async function processCapture(
+  text: string,
+  channelId: string,
+  messageTs: string
+) {
+  if (!convex) {
+    console.error("Convex client not initialized");
+    return;
+  }
+
+  try {
+    // Classify the thought using Claude
+    const classification = await classifyThought(text);
+    console.log("Classification result:", classification);
+
+    const { destination, confidence, title, extractedFields } = classification;
+
+    // Check confidence threshold
+    if (confidence < CONFIDENCE_THRESHOLD) {
+      // Log as needs_review, don't create record
+      await convex.mutation(api.inboxLog.create, {
+        originalText: text,
+        destination,
+        recordTitle: title,
+        confidence,
+        status: "needs_review",
+        slackMessageId: messageTs,
+      });
+
+      // Ask for clarification
+      await sendSlackMessage(
+        channelId,
+        `🤔 I'm not sure where this belongs (${Math.round(confidence * 100)}% confident).\n\nRepost with a prefix like \`person:\`, \`project:\`, \`idea:\`, or \`admin:\` to specify.`,
+        messageTs
+      );
+
+      return;
+    }
+
+    // Create record in appropriate table
+    let recordId: string | undefined;
+
+    if (destination === "people") {
+      const fields = extractedFields as { name: string; context: string; followUps: string[] };
+      recordId = await convex.mutation(api.people.create, {
+        name: fields.name || title,
+        context: fields.context || "",
+        followUps: fields.followUps || [],
+      });
+    } else if (destination === "projects") {
+      const fields = extractedFields as { name: string; nextAction: string; notes: string };
+      recordId = await convex.mutation(api.projects.create, {
+        name: fields.name || title,
+        nextAction: fields.nextAction || "Define next action",
+        notes: fields.notes || "",
+      });
+    } else if (destination === "ideas") {
+      const fields = extractedFields as { title: string; oneLiner: string; notes: string };
+      recordId = await convex.mutation(api.ideas.create, {
+        title: fields.title || title,
+        oneLiner: fields.oneLiner || "",
+        notes: fields.notes || "",
+      });
+    } else if (destination === "admin") {
+      const fields = extractedFields as { task: string; dueDate: string | null; notes: string };
+      recordId = await convex.mutation(api.admin.create, {
+        task: fields.task || title,
+        dueDate: fields.dueDate ? new Date(fields.dueDate).getTime() : undefined,
+        notes: fields.notes || "",
+      });
+    }
+
+    // Log to inbox
+    await convex.mutation(api.inboxLog.create, {
+      originalText: text,
+      destination,
+      recordTitle: title,
+      confidence,
+      status: "filed",
+      slackMessageId: messageTs,
+    });
+
+    // Send confirmation
+    const emoji = getDestinationEmoji(destination);
+    await addReaction(channelId, messageTs, emoji);
+    await sendSlackMessage(
+      channelId,
+      `${getDestinationIcon(destination)} Filed to *${destination}* as "${title}"\n_Reply \`fix: [destination]\` if I got this wrong_`,
+      messageTs
+    );
+  } catch (error) {
+    console.error("Error processing capture:", error);
+    await sendSlackMessage(
+      channelId,
+      `❌ Sorry, I had trouble processing that. Please try again.`,
+      messageTs
+    );
+  }
+}
+
+function getDestinationEmoji(destination: string): string {
+  const emojis: Record<string, string> = {
+    people: "busts_in_silhouette",
+    projects: "rocket",
+    ideas: "bulb",
+    admin: "clipboard",
+  };
+  return emojis[destination] || "white_check_mark";
+}
+
+function getDestinationIcon(destination: string): string {
+  const icons: Record<string, string> = {
+    people: "👥",
+    projects: "🚀",
+    ideas: "💡",
+    admin: "📋",
+  };
+  return icons[destination] || "✅";
+}
+
 export async function POST(request: NextRequest) {
   const body = await request.text();
   const timestamp = request.headers.get("x-slack-request-timestamp") || "";
@@ -54,26 +180,15 @@ export async function POST(request: NextRequest) {
     const event = payload.event;
 
     // Only process messages in channels (not bot messages, not edits)
-    if (
-      event.type === "message" &&
-      !event.subtype &&
-      !event.bot_id
-    ) {
+    if (event.type === "message" && !event.subtype && !event.bot_id) {
       const messageText = event.text;
       const channelId = event.channel;
-      const userId = event.user;
       const messageTs = event.ts;
 
-      console.log("Received message:", {
-        text: messageText,
-        channel: channelId,
-        user: userId,
-        ts: messageTs,
-      });
+      console.log("Processing capture:", { text: messageText, channel: channelId });
 
-      // TODO: Process message through Claude classification
-      // TODO: Store in Convex
-      // TODO: Send confirmation reply
+      // Process asynchronously to respond quickly to Slack
+      processCapture(messageText, channelId, messageTs).catch(console.error);
 
       return NextResponse.json({ ok: true });
     }
