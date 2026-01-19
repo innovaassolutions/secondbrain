@@ -4,7 +4,7 @@
 
 | Component | Original Stack | Our Stack |
 |-----------|---------------|-----------|
-| Interface/Capture | Slack | Mattermost (self-hosted) |
+| Interface/Capture | Slack | Slack |
 | Storage/Database | Notion | Convex |
 | Automation | Zapier | Custom Next.js API Routes |
 | Intelligence | Claude/ChatGPT | Claude API |
@@ -17,8 +17,8 @@
 
 Before diving into implementation details, these are the engineering principles from the source material that guide our design:
 
-1. **Reduce the human's job to one reliable behavior** - Capture to Mattermost, everything else is automated
-2. **Separate memory from compute from interface** - Convex (memory), API routes (compute), Mattermost + Next.js dashboard (interface)
+1. **Reduce the human's job to one reliable behavior** - Capture to Slack, everything else is automated
+2. **Separate memory from compute from interface** - Convex (memory), API routes (compute), Slack + Next.js dashboard (interface)
 3. **Treat prompts like APIs** - Structured JSON schemas, no creative variance
 4. **Build trust mechanisms** - Audit logs, confidence scores, easy corrections
 5. **Default to safe behavior when uncertain** - Hold items below confidence threshold
@@ -38,15 +38,15 @@ Before diving into implementation details, these are the engineering principles 
 **Purpose:** Frictionless thought capture in under 5 seconds
 
 **Implementation:**
-- Mattermost private channel called `sb-inbox`
-- Mattermost Outgoing Webhook configured to POST to our Next.js API
+- Slack private channel called `sb-inbox`
+- Slack Outgoing Webhook configured to POST to our Next.js API
 - One message = one thought, no organizing required
 - Bot confirms receipt in thread
 
-**Mattermost Configuration:**
+**Slack Configuration:**
 - Create dedicated bot account for responses
 - Set up outgoing webhook on `sb-inbox` channel
-- Webhook URL: `https://[your-app].vercel.app/api/webhooks/mattermost/capture`
+- Webhook URL: `https://[your-app].vercel.app/api/webhooks/slack/capture`
 
 ---
 
@@ -138,7 +138,7 @@ inboxLog: {
   recordTitle: string,
   confidence: number,
   status: "filed" | "needs_review" | "corrected",
-  mattermostPostId: string,  // For fix-button responses
+  slackPostId: string,  // For fix-button responses
   createdAt: number,
 }
 ```
@@ -186,7 +186,7 @@ getWeeklyActivity()
   - What title was assigned
   - Confidence score from AI
   - Timestamp
-  - Mattermost post ID (for corrections)
+  - Slack post ID (for corrections)
   - Status (filed/needs_review/corrected)
 
 **Dashboard View:**
@@ -204,7 +204,7 @@ getWeeklyActivity()
 - If confidence < threshold:
   - Log to inboxLog with status "needs_review"
   - DO NOT create record in destination table
-  - Bot replies in Mattermost: "I'm not sure where this belongs. Could you repost with a prefix like `person:`, `project:`, `idea:`, or `admin:`?"
+  - Bot replies in Slack: "I'm not sure where this belongs. Could you repost with a prefix like `person:`, `project:`, `idea:`, or `admin:`?"
 
 **Prefix Override System:**
 - If message starts with `person:`, `project:`, `idea:`, or `admin:`:
@@ -224,7 +224,7 @@ getWeeklyActivity()
   - People with pending follow-ups
   - Admin items due today/overdue
 - Sends to Claude with summarization prompt
-- Posts to Mattermost DM (or dedicated `sb-digest` channel)
+- Posts to Slack DM (or dedicated `sb-digest` channel)
 
 **Daily Digest Format (<150 words):**
 ```
@@ -280,7 +280,7 @@ getWeeklyActivity()
 
 **Implementation:**
 - Bot reply includes instruction: "Reply `fix: [correct destination]` if I got this wrong"
-- Mattermost webhook monitors for replies starting with `fix:`
+- Slack webhook monitors for replies starting with `fix:`
 - API route:
   1. Parses correct destination
   2. Moves record to correct table (or creates if was held)
@@ -303,7 +303,7 @@ fix: delete      → Remove entirely (mark as deleted in log)
 ```
 /api
 ├── webhooks/
-│   └── mattermost/
+│   └── slack/
 │       ├── capture.ts        # Incoming thoughts from sb-inbox
 │       └── fix.ts            # Fix command handler
 ├── cron/
@@ -313,7 +313,7 @@ fix: delete      → Remove entirely (mark as deleted in log)
 │   ├── classify.ts           # Classification logic
 │   └── summarize.ts          # Digest/review generation
 └── internal/
-    ├── mattermost.ts         # Mattermost API wrapper
+    ├── slack.ts         # Slack API wrapper
     └── convex.ts             # Convex client utilities
 ```
 
@@ -345,12 +345,11 @@ fix: delete      → Remove entirely (mark as deleted in log)
 ## Environment Variables
 
 ```env
-# Mattermost
-MATTERMOST_URL=https://your-mattermost-instance.com
-MATTERMOST_BOT_TOKEN=xxxx
-MATTERMOST_WEBHOOK_SECRET=xxxx
-MATTERMOST_INBOX_CHANNEL_ID=xxxx
-MATTERMOST_DIGEST_CHANNEL_ID=xxxx  # Or user ID for DM
+# Slack
+SLACK_BOT_TOKEN=xoxb-xxxx
+SLACK_SIGNING_SECRET=xxxx
+SLACK_INBOX_CHANNEL_ID=xxxx
+SLACK_DIGEST_CHANNEL_ID=xxxx  # Or user ID for DM
 
 # Convex
 CONVEX_DEPLOYMENT=xxxx
@@ -374,7 +373,7 @@ TIMEZONE=America/New_York
 ### Capture Flow
 ```
 ┌─────────────┐     ┌──────────────┐     ┌─────────────┐
-│ User types  │────▶│  Mattermost  │────▶│   Webhook   │
+│ User types  │────▶│  Slack  │────▶│   Webhook   │
 │ in sb-inbox │     │   Channel    │     │  (capture)  │
 └─────────────┘     └──────────────┘     └──────┬──────┘
                                                 │
@@ -418,14 +417,14 @@ TIMEZONE=America/New_York
                                                ▼
                                       ┌──────────────┐
                                       │ Post digest  │
-                                      │ to Mattermost│
+                                      │ to Slack│
                                       └──────────────┘
 ```
 
 ### Fix Flow
 ```
 ┌─────────────┐     ┌──────────────┐     ┌─────────────┐
-│ User replies│────▶│  Mattermost  │────▶│   Webhook   │
+│ User replies│────▶│  Slack  │────▶│   Webhook   │
 │ "fix: idea" │     │   Thread     │     │   (fix)     │
 └─────────────┘     └──────────────┘     └──────┬──────┘
                                                 │
@@ -465,12 +464,12 @@ TIMEZONE=America/New_York
 
 1. Set up Convex project with schema
 2. Set up Next.js project on Vercel
-3. Configure Mattermost bot and webhook
-4. Build `/api/webhooks/mattermost/capture` route
+3. Configure Slack bot and webhook
+4. Build `/api/webhooks/slack/capture` route
 5. Build Claude classification integration
 6. Test end-to-end capture flow
 
-**Success Criteria:** Type a thought in Mattermost, see it appear in Convex with correct classification
+**Success Criteria:** Type a thought in Slack, see it appear in Convex with correct classification
 
 ### Phase 2: Trust Mechanisms (Week 2)
 **Goal:** Inbox log + Bouncer + Fix button
@@ -478,7 +477,7 @@ TIMEZONE=America/New_York
 1. Implement inbox logging for all captures
 2. Add confidence threshold filtering
 3. Build "needs review" flow with clarification request
-4. Build `/api/webhooks/mattermost/fix` route
+4. Build `/api/webhooks/slack/fix` route
 5. Build basic dashboard to view inbox log
 
 **Success Criteria:** Low-confidence items held for review, fix command works
@@ -492,7 +491,7 @@ TIMEZONE=America/New_York
 4. Build weekly review queries and prompt
 5. Set up Vercel cron for weekly review
 
-**Success Criteria:** Receive useful daily/weekly digests in Mattermost
+**Success Criteria:** Receive useful daily/weekly digests in Slack
 
 ### Phase 4: Dashboard (Week 4)
 **Goal:** Visual interface for browsing and editing
@@ -525,7 +524,7 @@ Potential additions:
 | Vercel | 100GB bandwidth, serverless functions | $0 (hobby) - $20 (pro) |
 | Convex | 1M function calls, 1GB storage | $0 (starter) - $25 (pro) |
 | Claude API | N/A | ~$5-15 (depends on volume) |
-| Mattermost | Self-hosted or cloud | $0 (self-hosted) - $10/user (cloud) |
+| Slack | Self-hosted or cloud | $0 (self-hosted) - $10/user (cloud) |
 
 **Estimated total: $5-50/month** depending on usage and tier choices
 
@@ -533,7 +532,7 @@ Potential additions:
 
 ## Security Considerations
 
-1. **Webhook Verification:** Validate Mattermost webhook signatures
+1. **Webhook Verification:** Validate Slack webhook signatures
 2. **API Key Protection:** Store all secrets in Vercel environment variables
 3. **Convex Auth:** Implement authentication for dashboard access
 4. **Rate Limiting:** Protect API routes from abuse
@@ -550,7 +549,7 @@ Potential additions:
 | Claude API down | Classification error logged | Items held in inboxLog, retry on next capture |
 | Convex unavailable | Function errors | Vercel will retry, check Convex status |
 | Low confidence spam | Review queue grows | Batch review through dashboard |
-| Mattermost bot offline | No responses | Check bot token, reconnect |
+| Slack bot offline | No responses | Check bot token, reconnect |
 
 ---
 
@@ -594,7 +593,7 @@ Track these to know the system is working:
 ## Next Steps
 
 1. **Read this plan thoroughly**
-2. **Set up accounts:** Vercel, Convex, Mattermost (if not already)
+2. **Set up accounts:** Vercel, Convex, Slack (if not already)
 3. **Start with Phase 1** - get the core capture loop working
 4. **Iterate based on actual use** - don't over-engineer upfront
 5. **Add complexity only when evidence says it's needed**
