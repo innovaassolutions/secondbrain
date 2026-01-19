@@ -122,27 +122,29 @@ export async function classifyThought(
 }
 
 async function callClaude(text: string): Promise<ClassificationResult> {
-  const message = await anthropic.messages.create({
-    model: "claude-sonnet-4-20250514",
-    max_tokens: 500,
-    messages: [
-      {
-        role: "user",
-        content: `${CLASSIFICATION_PROMPT}\n\n"${text}"`,
-      },
-    ],
-  });
-
-  const content = message.content[0];
-  if (content.type !== "text") {
-    throw new Error("Unexpected response type from Claude");
-  }
-
   try {
+    console.log("Calling Claude API for classification...");
+    const message = await anthropic.messages.create({
+      model: "claude-3-5-sonnet-20241022",
+      max_tokens: 500,
+      messages: [
+        {
+          role: "user",
+          content: `${CLASSIFICATION_PROMPT}\n\n"${text}"`,
+        },
+      ],
+    });
+
+    console.log("Claude API response received");
+    const content = message.content[0];
+    if (content.type !== "text") {
+      throw new Error("Unexpected response type from Claude");
+    }
+
     const result = JSON.parse(content.text);
     return result as ClassificationResult;
-  } catch {
-    console.error("Failed to parse Claude response:", content.text);
-    throw new Error("Failed to parse classification response");
+  } catch (error) {
+    console.error("Claude API error:", error);
+    throw error;
   }
 }
