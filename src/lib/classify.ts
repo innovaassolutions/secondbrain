@@ -134,7 +134,7 @@ async function callClaude(text: string): Promise<ClassificationResult> {
     console.log("Anthropic client created, calling API...");
 
     const message = await anthropic.messages.create({
-      model: "claude-3-5-sonnet-20241022",
+      model: "claude-3-5-sonnet-latest",
       max_tokens: 500,
       messages: [
         {
