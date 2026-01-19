@@ -1,8 +1,13 @@
 import Anthropic from "@anthropic-ai/sdk";
 
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-});
+function getAnthropicClient() {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) {
+    throw new Error("ANTHROPIC_API_KEY environment variable is not set");
+  }
+  console.log("Anthropic API key present, length:", apiKey.length);
+  return new Anthropic({ apiKey });
+}
 
 export type Destination = "people" | "projects" | "ideas" | "admin";
 
@@ -122,8 +127,12 @@ export async function classifyThought(
 }
 
 async function callClaude(text: string): Promise<ClassificationResult> {
+  console.log("Starting Claude classification...");
+
   try {
-    console.log("Calling Claude API for classification...");
+    const anthropic = getAnthropicClient();
+    console.log("Anthropic client created, calling API...");
+
     const message = await anthropic.messages.create({
       model: "claude-3-5-sonnet-20241022",
       max_tokens: 500,
@@ -135,16 +144,19 @@ async function callClaude(text: string): Promise<ClassificationResult> {
       ],
     });
 
-    console.log("Claude API response received");
+    console.log("Claude API response received, parsing...");
     const content = message.content[0];
     if (content.type !== "text") {
       throw new Error("Unexpected response type from Claude");
     }
 
+    console.log("Claude raw response:", content.text);
     const result = JSON.parse(content.text);
+    console.log("Parsed classification:", result);
     return result as ClassificationResult;
   } catch (error) {
-    console.error("Claude API error:", error);
+    console.error("Claude API error:", error instanceof Error ? error.message : error);
+    console.error("Full error:", JSON.stringify(error, null, 2));
     throw error;
   }
 }
