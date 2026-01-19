@@ -151,7 +151,14 @@ async function callClaude(text: string): Promise<ClassificationResult> {
     }
 
     console.log("Claude raw response:", content.text);
-    const result = JSON.parse(content.text);
+
+    // Strip markdown code blocks if present
+    let jsonText = content.text.trim();
+    if (jsonText.startsWith("```")) {
+      jsonText = jsonText.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "");
+    }
+
+    const result = JSON.parse(jsonText);
     console.log("Parsed classification:", result);
     return result as ClassificationResult;
   } catch (error) {
