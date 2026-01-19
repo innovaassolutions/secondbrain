@@ -38,6 +38,9 @@ function verifySlackRequest(
   );
 }
 
+// Track in-flight requests to prevent duplicate processing
+const processingMessages = new Set<string>();
+
 async function processCapture(
   text: string,
   channelId: string,
@@ -45,6 +48,23 @@ async function processCapture(
 ) {
   if (!convex) {
     console.error("Convex client not initialized");
+    return;
+  }
+
+  // Check if already processing this message (Slack retries)
+  if (processingMessages.has(messageTs)) {
+    console.log("Already processing message, skipping:", messageTs);
+    return;
+  }
+  processingMessages.add(messageTs);
+
+  // Also check database for already-processed messages
+  const existing = await convex.query(api.inboxLog.getByPostId, {
+    slackMessageId: messageTs,
+  });
+  if (existing) {
+    console.log("Message already processed, skipping:", messageTs);
+    processingMessages.delete(messageTs);
     return;
   }
 
@@ -135,6 +155,9 @@ async function processCapture(
       `❌ Sorry, I had trouble processing that. Please try again.`,
       messageTs
     );
+  } finally {
+    // Clean up in-flight tracking
+    processingMessages.delete(messageTs);
   }
 }
 
