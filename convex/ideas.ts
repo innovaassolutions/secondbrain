@@ -49,3 +49,19 @@ export const get = query({
     return await ctx.db.get(args.id);
   },
 });
+
+export const remove = mutation({
+  args: { id: v.id("ideas") },
+  handler: async (ctx, args) => {
+    await ctx.db.delete(args.id);
+  },
+});
+
+export const getRecentCount = query({
+  args: { days: v.number() },
+  handler: async (ctx, args) => {
+    const cutoff = Date.now() - args.days * 24 * 60 * 60 * 1000;
+    const ideas = await ctx.db.query("ideas").collect();
+    return ideas.filter((i) => i.createdAt >= cutoff).length;
+  },
+});

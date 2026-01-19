@@ -5,13 +5,14 @@ export const create = mutation({
   args: {
     originalText: v.string(),
     destination: v.string(),
-    recordId: v.optional(v.id("people")),
+    recordId: v.optional(v.string()),
     recordTitle: v.string(),
     confidence: v.number(),
     status: v.union(
       v.literal("filed"),
       v.literal("needs_review"),
-      v.literal("corrected")
+      v.literal("corrected"),
+      v.literal("deleted")
     ),
     slackMessageId: v.string(),
   },
@@ -93,5 +94,29 @@ export const getByPostId = query({
   handler: async (ctx, args) => {
     const logs = await ctx.db.query("inboxLog").collect();
     return logs.find((l) => l.slackMessageId === args.slackMessageId);
+  },
+});
+
+export const markAsDeleted = mutation({
+  args: { id: v.id("inboxLog") },
+  handler: async (ctx, args) => {
+    return await ctx.db.patch(args.id, { status: "deleted" });
+  },
+});
+
+export const updateRecordId = mutation({
+  args: {
+    id: v.id("inboxLog"),
+    recordId: v.string(),
+    newDestination: v.string(),
+    recordTitle: v.string(),
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db.patch(args.id, {
+      recordId: args.recordId,
+      destination: args.newDestination,
+      recordTitle: args.recordTitle,
+      status: "corrected",
+    });
   },
 });

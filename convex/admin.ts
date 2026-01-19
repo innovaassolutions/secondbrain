@@ -79,3 +79,21 @@ export const get = query({
     return await ctx.db.get(args.id);
   },
 });
+
+export const remove = mutation({
+  args: { id: v.id("admin") },
+  handler: async (ctx, args) => {
+    await ctx.db.delete(args.id);
+  },
+});
+
+export const getOverdue = query({
+  args: {},
+  handler: async (ctx) => {
+    const now = Date.now();
+    const tasks = await ctx.db.query("admin").collect();
+    return tasks.filter(
+      (t) => t.status === "pending" && t.dueDate && t.dueDate < now
+    );
+  },
+});

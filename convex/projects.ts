@@ -81,3 +81,34 @@ export const get = query({
     return await ctx.db.get(args.id);
   },
 });
+
+export const remove = mutation({
+  args: { id: v.id("projects") },
+  handler: async (ctx, args) => {
+    await ctx.db.delete(args.id);
+  },
+});
+
+export const getStalled = query({
+  args: {},
+  handler: async (ctx) => {
+    const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+    const projects = await ctx.db.query("projects").collect();
+    return projects.filter(
+      (p) =>
+        (p.status === "active" || p.status === "waiting" || p.status === "blocked") &&
+        p.updatedAt < sevenDaysAgo
+    );
+  },
+});
+
+export const getRecentlyCompleted = query({
+  args: {},
+  handler: async (ctx) => {
+    const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+    const projects = await ctx.db.query("projects").collect();
+    return projects.filter(
+      (p) => p.status === "done" && p.updatedAt >= sevenDaysAgo
+    );
+  },
+});

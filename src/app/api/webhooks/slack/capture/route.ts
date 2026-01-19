@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
-import { classifyThought, ClassificationResult } from "@/lib/classify";
+import { classifyThought, Destination } from "@/lib/classify";
 import { sendSlackMessage, addReaction } from "@/lib/slack";
 import { convex, api } from "@/lib/convex";
 
@@ -8,6 +8,17 @@ const SLACK_SIGNING_SECRET = process.env.SLACK_SIGNING_SECRET || "";
 const CONFIDENCE_THRESHOLD = parseFloat(
   process.env.CONFIDENCE_THRESHOLD || "0.6"
 );
+
+// Destination mapping for fix command
+const DESTINATION_MAP: Record<string, Destination> = {
+  person: "people",
+  people: "people",
+  project: "projects",
+  projects: "projects",
+  idea: "ideas",
+  ideas: "ideas",
+  admin: "admin",
+};
 
 function verifySlackRequest(
   body: string,
@@ -161,6 +172,126 @@ async function processCapture(
   }
 }
 
+async function processFix(
+  text: string,
+  channelId: string,
+  messageTs: string,
+  threadTs: string
+) {
+  if (!convex) {
+    console.error("Convex client not initialized");
+    return;
+  }
+
+  // Parse the fix command
+  const fixMatch = text.match(/^fix:\s*(\w+)/i);
+  if (!fixMatch) {
+    return;
+  }
+
+  const targetDestination = fixMatch[1].toLowerCase();
+  console.log("Fix command detected:", { target: targetDestination, threadTs });
+
+  // Look up the original inbox log entry by the parent message timestamp
+  const inboxEntry = await convex.query(api.inboxLog.getByPostId, {
+    slackMessageId: threadTs,
+  });
+
+  if (!inboxEntry) {
+    await sendSlackMessage(
+      channelId,
+      "I couldn't find the original message to fix.",
+      messageTs
+    );
+    return;
+  }
+
+  try {
+    // Handle delete command
+    if (targetDestination === "delete") {
+      await convex.mutation(api.inboxLog.markAsDeleted, { id: inboxEntry._id });
+      await sendSlackMessage(
+        channelId,
+        "Got it! Marked as deleted.",
+        messageTs
+      );
+      return;
+    }
+
+    // Validate destination
+    const newDestination = DESTINATION_MAP[targetDestination];
+    if (!newDestination) {
+      await sendSlackMessage(
+        channelId,
+        `Unknown destination "${targetDestination}". Use: people, projects, ideas, admin, or delete`,
+        messageTs
+      );
+      return;
+    }
+
+    // Re-classify the original text with the forced destination
+    const classification = await classifyThought(
+      `${targetDestination}: ${inboxEntry.originalText}`
+    );
+
+    // Create record in the new table
+    let recordId: string | undefined;
+    const { title, extractedFields } = classification;
+
+    if (newDestination === "people") {
+      const fields = extractedFields as { name: string; context: string; followUps: string[] };
+      recordId = await convex.mutation(api.people.create, {
+        name: fields.name || title,
+        context: fields.context || "",
+        followUps: fields.followUps || [],
+      });
+    } else if (newDestination === "projects") {
+      const fields = extractedFields as { name: string; nextAction: string; notes: string };
+      recordId = await convex.mutation(api.projects.create, {
+        name: fields.name || title,
+        nextAction: fields.nextAction || "Define next action",
+        notes: fields.notes || "",
+      });
+    } else if (newDestination === "ideas") {
+      const fields = extractedFields as { title: string; oneLiner: string; notes: string };
+      recordId = await convex.mutation(api.ideas.create, {
+        title: fields.title || title,
+        oneLiner: fields.oneLiner || "",
+        notes: fields.notes || "",
+      });
+    } else if (newDestination === "admin") {
+      const fields = extractedFields as { task: string; dueDate: string | null; notes: string };
+      recordId = await convex.mutation(api.admin.create, {
+        task: fields.task || title,
+        dueDate: fields.dueDate ? new Date(fields.dueDate).getTime() : undefined,
+        notes: fields.notes || "",
+      });
+    }
+
+    // Update the inbox log entry
+    await convex.mutation(api.inboxLog.updateRecordId, {
+      id: inboxEntry._id,
+      recordId: recordId || "",
+      newDestination,
+      recordTitle: title,
+    });
+
+    // Confirm in thread
+    await sendSlackMessage(
+      channelId,
+      `${getDestinationIcon(newDestination)} Got it! Moved to *${newDestination}* as "${title}"`,
+      messageTs
+    );
+  } catch (error) {
+    console.error("Error processing fix command:", error);
+    await sendSlackMessage(
+      channelId,
+      "Sorry, I had trouble processing that fix command.",
+      messageTs
+    );
+  }
+}
+
 function getDestinationEmoji(destination: string): string {
   const emojis: Record<string, string> = {
     people: "busts_in_silhouette",
@@ -207,6 +338,23 @@ export async function POST(request: NextRequest) {
       const messageText = event.text;
       const channelId = event.channel;
       const messageTs = event.ts;
+      const threadTs = event.thread_ts;
+
+      // Check if this is a thread reply with fix command
+      if (threadTs && messageText.toLowerCase().startsWith("fix:")) {
+        console.log("Processing fix command:", { text: messageText, threadTs });
+        try {
+          await processFix(messageText, channelId, messageTs, threadTs);
+        } catch (error) {
+          console.error("Fix processing failed:", error);
+        }
+        return NextResponse.json({ ok: true });
+      }
+
+      // Skip thread replies that aren't fix commands
+      if (threadTs) {
+        return NextResponse.json({ ok: true });
+      }
 
       console.log("Processing capture:", { text: messageText, channel: channelId });
 

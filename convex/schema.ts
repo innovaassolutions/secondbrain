@@ -52,13 +52,14 @@ export default defineSchema({
   inboxLog: defineTable({
     originalText: v.string(),
     destination: v.string(),
-    recordId: v.optional(v.id("people")),
+    recordId: v.optional(v.string()),
     recordTitle: v.string(),
     confidence: v.number(),
     status: v.union(
       v.literal("filed"),
       v.literal("needs_review"),
-      v.literal("corrected")
+      v.literal("corrected"),
+      v.literal("deleted")
     ),
     slackMessageId: v.string(),
     createdAt: v.number(),
