@@ -108,11 +108,24 @@ export async function classifyThought(
   text: string
 ): Promise<ClassificationResult> {
   // Check for prefix override (e.g., "person:", "project:", "idea:", "admin:")
-  const prefixMatch = text.match(/^(person|people|project|idea|admin):\s*/i);
+  const prefixMatch = text.match(/^(person|people|project|projects|idea|ideas|admin):\s*/i);
   if (prefixMatch) {
     const prefix = prefixMatch[1].toLowerCase();
     const cleanText = text.slice(prefixMatch[0].length);
-    const destination = prefix === "person" ? "people" : prefix as Destination;
+
+    // Map singular prefixes to plural destination names
+    const destinationMap: Record<string, Destination> = {
+      person: "people",
+      people: "people",
+      project: "projects",
+      projects: "projects",
+      idea: "ideas",
+      ideas: "ideas",
+      admin: "admin",
+    };
+    const destination = destinationMap[prefix];
+
+    console.log(`Prefix override detected: "${prefix}" -> "${destination}"`);
 
     // Still classify to extract fields, but force the destination
     const result = await callClaude(cleanText);
