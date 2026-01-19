@@ -122,7 +122,7 @@ export default function SettingsPage() {
               </div>
               <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-medium text-green-700
                                dark:bg-green-900/30 dark:text-green-400">
-                7:00 AM EST
+                7:00 AM SGT
               </span>
             </div>
 
@@ -140,7 +140,7 @@ export default function SettingsPage() {
               </div>
               <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-medium text-blue-700
                                dark:bg-blue-900/30 dark:text-blue-400">
-                Sundays 4:00 PM EST
+                Sundays 4:00 PM SGT
               </span>
             </div>
           </div>
