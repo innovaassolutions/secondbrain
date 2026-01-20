@@ -48,12 +48,13 @@ export interface WeeklyData extends DigestData {
   newIdeas: number;
 }
 
-const DAILY_DIGEST_PROMPT = `You are a personal productivity assistant. Generate a brief, actionable morning digest based on the following data. Keep it under 150 words, friendly but focused. Use emojis sparingly.
+const DAILY_DIGEST_PROMPT = `You are a personal productivity assistant. Generate a brief, actionable morning digest based on the following data. Keep it under 180 words, friendly but focused. Use emojis sparingly.
 
 IMPORTANT: Use Slack mrkdwn formatting (NOT standard Markdown):
 - Bold text uses single asterisks: *bold* (not **bold**)
 - Bullet points use • character
 - Numbered lists work normally
+- Italics use single underscores: _italic_
 
 Format your response exactly like this:
 
@@ -69,6 +70,12 @@ Good morning! Here's your focus for today:
 
 *Small win to notice:*
 • [Any recently completed item or positive progress]
+
+*Daily Spark:*
+_"[Inspirational quote about resilience, persistence, or entrepreneurship from a famous entrepreneur, founder, or historical figure - e.g. Steve Jobs, Sara Blakely, Winston Churchill, Marcus Aurelius, Elon Musk, Oprah, etc.]"_
+— [Attribution]
+
+Choose quotes that speak to pushing through struggle, finding resilience, embracing failure as learning, or maintaining focus during difficult times. Vary the sources - don't repeat the same person.
 
 If there are overdue admin tasks, mention them prominently. If someone needs a follow-up, include that.
 
