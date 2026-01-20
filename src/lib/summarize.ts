@@ -48,7 +48,7 @@ export interface WeeklyData extends DigestData {
   newIdeas: number;
 }
 
-const DAILY_DIGEST_PROMPT = `You are a personal productivity assistant. Generate a brief, actionable morning digest based on the following data. Keep it under 180 words, friendly but focused. Use emojis sparingly.
+const DAILY_DIGEST_PROMPT = `You are a personal productivity assistant. Generate a brief, actionable morning digest based on the following data. Keep it under 180 words, friendly and visually engaging. Use emojis generously to make it stimulating.
 
 IMPORTANT: Use Slack mrkdwn formatting (NOT standard Markdown):
 - Bold text uses single asterisks: *bold* (not **bold**)
@@ -58,30 +58,30 @@ IMPORTANT: Use Slack mrkdwn formatting (NOT standard Markdown):
 
 Format your response exactly like this:
 
-Good morning! Here's your focus for today:
+☀️ Good morning! Here's your focus for today:
 
-*Top 3 Actions:*
+🎯 *Top 3 Actions:*
 1. [Most important concrete action from active projects]
 2. [Second important action]
 3. [Admin item or follow-up if available]
 
-*Might be stuck on:*
+⚠️ *Might be stuck on:*
 • [List any stalled projects - ones not updated in 7+ days]
 
-*Small win to notice:*
+🏆 *Small win to notice:*
 • [Any recently completed item or positive progress]
 
-*Daily Spark:*
+💡 *Daily Spark:*
 _"[Inspirational quote about resilience, persistence, or entrepreneurship from a famous entrepreneur, founder, or historical figure - e.g. Steve Jobs, Sara Blakely, Winston Churchill, Marcus Aurelius, Elon Musk, Oprah, etc.]"_
 — [Attribution]
 
 Choose quotes that speak to pushing through struggle, finding resilience, embracing failure as learning, or maintaining focus during difficult times. Vary the sources - don't repeat the same person.
 
-If there are overdue admin tasks, mention them prominently. If someone needs a follow-up, include that.
+If there are overdue admin tasks, mention them prominently with 🚨. If someone needs a follow-up, use 👤.
 
 Data:`;
 
-const WEEKLY_REVIEW_PROMPT = `You are a personal productivity assistant. Generate a weekly review summary based on the following data. Keep it under 250 words, insightful but concise. Use emojis sparingly.
+const WEEKLY_REVIEW_PROMPT = `You are a personal productivity assistant. Generate a weekly review summary based on the following data. Keep it under 250 words, insightful and visually engaging. Use emojis generously to make it stimulating.
 
 IMPORTANT: Use Slack mrkdwn formatting (NOT standard Markdown):
 - Bold text uses single asterisks: *bold* (not **bold**)
@@ -90,25 +90,29 @@ IMPORTANT: Use Slack mrkdwn formatting (NOT standard Markdown):
 
 Format your response exactly like this:
 
-Your week in review:
+📊 *Your week in review:*
 
-*What happened:*
+✅ *What happened:*
 • X new captures processed
 • Y projects moved forward
 • Z new connections logged
 
-*Biggest open loops:*
+🔄 *Biggest open loops:*
 1. [Most pressing waiting/blocked project]
 2. [Overdue admin item if any]
 3. [Person needing follow-up if any]
 
-*Suggested focus for next week:*
+🚀 *Suggested focus for next week:*
 1. [Actionable recommendation based on data]
 2. [Second recommendation]
 3. [Third recommendation]
 
-*Recurring theme noticed:*
+🔍 *Recurring theme noticed:*
 [One sentence observation about patterns in the week's captures - common topics, areas of focus, etc.]
+
+💪 *Weekly motivation:*
+_"[Inspirational quote about perseverance, growth, or entrepreneurship]"_
+— [Attribution]
 
 Be specific and reference actual project/task names from the data.
 
