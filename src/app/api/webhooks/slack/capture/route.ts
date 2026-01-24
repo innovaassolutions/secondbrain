@@ -18,6 +18,9 @@ const DESTINATION_MAP: Record<string, Destination> = {
   idea: "ideas",
   ideas: "ideas",
   admin: "admin",
+  vocab: "vocabulary",
+  vocabulary: "vocabulary",
+  word: "vocabulary",
 };
 
 function verifySlackRequest(
@@ -101,7 +104,7 @@ async function processCapture(
       // Ask for clarification
       await sendSlackMessage(
         channelId,
-        `🤔 I'm not sure where this belongs (${Math.round(confidence * 100)}% confident).\n\nRepost with a prefix like \`person:\`, \`project:\`, \`idea:\`, or \`admin:\` to specify.`,
+        `🤔 I'm not sure where this belongs (${Math.round(confidence * 100)}% confident).\n\nRepost with a prefix like \`person:\`, \`project:\`, \`idea:\`, \`admin:\`, or \`vocab:\` to specify.`,
         messageTs
       );
 
@@ -138,6 +141,21 @@ async function processCapture(
         task: fields.task || title,
         dueDate: fields.dueDate ? new Date(fields.dueDate).getTime() : undefined,
         notes: fields.notes || "",
+      });
+    } else if (destination === "vocabulary") {
+      const fields = extractedFields as {
+        word: string;
+        definition: string;
+        partOfSpeech: string | null;
+        example: string | null;
+        source: string | null;
+      };
+      recordId = await convex.mutation(api.vocabulary.create, {
+        word: fields.word || title,
+        definition: fields.definition || "",
+        partOfSpeech: fields.partOfSpeech || undefined,
+        example: fields.example || undefined,
+        source: fields.source || undefined,
       });
     }
 
@@ -223,7 +241,7 @@ async function processFix(
     if (!newDestination) {
       await sendSlackMessage(
         channelId,
-        `Unknown destination "${targetDestination}". Use: people, projects, ideas, admin, or delete`,
+        `Unknown destination "${targetDestination}". Use: people, projects, ideas, admin, vocabulary, or delete`,
         messageTs
       );
       return;
@@ -266,6 +284,21 @@ async function processFix(
         dueDate: fields.dueDate ? new Date(fields.dueDate).getTime() : undefined,
         notes: fields.notes || "",
       });
+    } else if (newDestination === "vocabulary") {
+      const fields = extractedFields as {
+        word: string;
+        definition: string;
+        partOfSpeech: string | null;
+        example: string | null;
+        source: string | null;
+      };
+      recordId = await convex.mutation(api.vocabulary.create, {
+        word: fields.word || title,
+        definition: fields.definition || "",
+        partOfSpeech: fields.partOfSpeech || undefined,
+        example: fields.example || undefined,
+        source: fields.source || undefined,
+      });
     }
 
     // Update the inbox log entry
@@ -298,6 +331,7 @@ function getDestinationEmoji(destination: string): string {
     projects: "rocket",
     ideas: "bulb",
     admin: "clipboard",
+    vocabulary: "book",
   };
   return emojis[destination] || "white_check_mark";
 }
@@ -308,6 +342,7 @@ function getDestinationIcon(destination: string): string {
     projects: "🚀",
     ideas: "💡",
     admin: "📋",
+    vocabulary: "📖",
   };
   return icons[destination] || "✅";
 }

@@ -75,6 +75,7 @@ export const getWeeklyActivity = query({
         projects: recentLogs.filter((l) => l.destination === "projects").length,
         ideas: recentLogs.filter((l) => l.destination === "ideas").length,
         admin: recentLogs.filter((l) => l.destination === "admin").length,
+        vocabulary: recentLogs.filter((l) => l.destination === "vocabulary").length,
       },
       needsReview: recentLogs.filter((l) => l.status === "needs_review").length,
       corrected: recentLogs.filter((l) => l.status === "corrected").length,

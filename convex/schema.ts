@@ -48,6 +48,20 @@ export default defineSchema({
     createdAt: v.number(),
   }),
 
+  // Vocabulary Database
+  vocabulary: defineTable({
+    word: v.string(),
+    definition: v.string(),
+    partOfSpeech: v.optional(v.string()),
+    example: v.optional(v.string()),
+    source: v.optional(v.string()),
+    tags: v.array(v.string()),
+    timesShown: v.number(),
+    lastShownAt: v.optional(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }),
+
   // Inbox Log (Audit Trail)
   inboxLog: defineTable({
     originalText: v.string(),

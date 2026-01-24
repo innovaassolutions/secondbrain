@@ -30,6 +30,12 @@ export interface DigestData {
   recentlyCompleted: Array<{
     name: string;
   }>;
+  vocabularyWord?: {
+    word: string;
+    definition: string;
+    partOfSpeech?: string;
+    example?: string;
+  };
 }
 
 export interface WeeklyData extends DigestData {
@@ -40,12 +46,15 @@ export interface WeeklyData extends DigestData {
       projects: number;
       ideas: number;
       admin: number;
+      vocabulary: number;
     };
     needsReview: number;
     corrected: number;
   };
   newPeople: number;
   newIdeas: number;
+  newVocabulary: number;
+  totalVocabulary: number;
 }
 
 const DAILY_DIGEST_PROMPT = `You are a personal productivity assistant. Generate a brief, actionable morning digest based on the following data. Keep it under 180 words, friendly and visually engaging. Use emojis generously to make it stimulating.
@@ -70,6 +79,13 @@ Format your response exactly like this:
 
 🏆 *Small win to notice:*
 • [Any recently completed item or positive progress]
+
+📖 *Word of the Day:*
+[If vocabularyWord is provided in the data, include it like this:]
+*[word]* ([part of speech])
+_[definition]_
+[If example sentence is provided: "Example: [example sentence]"]
+[If no vocabularyWord in data, skip this section entirely]
 
 💡 *Daily Spark:*
 _"[Inspirational quote about resilience, persistence, or entrepreneurship from a famous entrepreneur, founder, or historical figure - e.g. Steve Jobs, Sara Blakely, Winston Churchill, Marcus Aurelius, Elon Musk, Oprah, etc.]"_
@@ -96,6 +112,7 @@ Format your response exactly like this:
 • X new captures processed
 • Y projects moved forward
 • Z new connections logged
+• [If newVocabulary > 0: "N new vocabulary words added (total: M words)"]
 
 🔄 *Biggest open loops:*
 1. [Most pressing waiting/blocked project]

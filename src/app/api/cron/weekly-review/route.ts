@@ -38,6 +38,9 @@ export async function GET(request: NextRequest) {
       weeklyActivity,
       newPeopleCount,
       newIdeasCount,
+      newVocabularyCount,
+      totalVocabularyCount,
+      randomVocabWord,
     ] = await Promise.all([
       convex.query(api.projects.getActive, {}),
       convex.query(api.projects.getStalled, {}),
@@ -47,6 +50,9 @@ export async function GET(request: NextRequest) {
       convex.query(api.inboxLog.getWeeklyActivity, {}),
       convex.query(api.people.getRecentCount, { days: 7 }),
       convex.query(api.ideas.getRecentCount, { days: 7 }),
+      convex.query(api.vocabulary.getRecentCount, { days: 7 }),
+      convex.query(api.vocabulary.getTotalCount, {}),
+      convex.query(api.vocabulary.getRandomWord, {}),
     ]);
 
     const now = Date.now();
@@ -76,10 +82,25 @@ export async function GET(request: NextRequest) {
       recentlyCompleted: recentlyCompleted.map((p) => ({
         name: p.name,
       })),
+      vocabularyWord: randomVocabWord
+        ? {
+            word: randomVocabWord.word,
+            definition: randomVocabWord.definition,
+            partOfSpeech: randomVocabWord.partOfSpeech || undefined,
+            example: randomVocabWord.example || undefined,
+          }
+        : undefined,
       weeklyActivity,
       newPeople: newPeopleCount,
       newIdeas: newIdeasCount,
+      newVocabulary: newVocabularyCount,
+      totalVocabulary: totalVocabularyCount,
     };
+
+    // Mark vocabulary word as shown if one was selected
+    if (randomVocabWord) {
+      await convex.mutation(api.vocabulary.markAsShown, { id: randomVocabWord._id });
+    }
 
     // Generate weekly review using Claude
     const reviewText = await generateWeeklyReview(weeklyData);

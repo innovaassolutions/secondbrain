@@ -9,13 +9,13 @@ function getAnthropicClient() {
   return new Anthropic({ apiKey });
 }
 
-export type Destination = "people" | "projects" | "ideas" | "admin";
+export type Destination = "people" | "projects" | "ideas" | "admin" | "vocabulary";
 
 export interface ClassificationResult {
   destination: Destination;
   confidence: number;
   title: string;
-  extractedFields: PeopleFields | ProjectFields | IdeaFields | AdminFields;
+  extractedFields: PeopleFields | ProjectFields | IdeaFields | AdminFields | VocabularyFields;
 }
 
 export interface PeopleFields {
@@ -42,6 +42,14 @@ export interface AdminFields {
   notes: string;
 }
 
+export interface VocabularyFields {
+  word: string;
+  definition: string;
+  partOfSpeech: string | null;
+  example: string | null;
+  source: string | null;
+}
+
 const CLASSIFICATION_PROMPT = `You are a classification system for a personal knowledge management tool called Second Brain. Your job is to analyze incoming thoughts and classify them into one of four categories.
 
 Categories:
@@ -49,6 +57,7 @@ Categories:
 - projects: Active work items, goals, tasks with multiple steps, ongoing initiatives
 - ideas: Concepts, insights, things to explore later, random thoughts worth saving
 - admin: Errands, one-off tasks, appointments, logistics, simple to-dos
+- vocabulary: New words to learn, vocabulary words with definitions, terms to remember, words to incorporate into daily use
 
 Analyze the following thought and return ONLY valid JSON with no additional text.
 
@@ -100,6 +109,20 @@ For "admin", extract:
   }
 }
 
+For "vocabulary", extract:
+{
+  "destination": "vocabulary",
+  "confidence": 0.0-1.0,
+  "title": "The word itself",
+  "extractedFields": {
+    "word": "The vocabulary word",
+    "definition": "Clear definition of the word",
+    "partOfSpeech": "noun/verb/adjective/adverb/etc or null if unknown",
+    "example": "Example sentence using the word, or null",
+    "source": "Where the word was encountered (book, article, conversation), or null"
+  }
+}
+
 Be decisive. If you're unsure, make your best guess but lower the confidence score. A confidence below 0.6 means the item will be held for manual review.
 
 Thought to classify:`;
@@ -107,8 +130,8 @@ Thought to classify:`;
 export async function classifyThought(
   text: string
 ): Promise<ClassificationResult> {
-  // Check for prefix override (e.g., "person:", "project:", "idea:", "admin:")
-  const prefixMatch = text.match(/^(person|people|project|projects|idea|ideas|admin):\s*/i);
+  // Check for prefix override (e.g., "person:", "project:", "idea:", "admin:", "vocab:")
+  const prefixMatch = text.match(/^(person|people|project|projects|idea|ideas|admin|vocab|vocabulary|word):\s*/i);
   if (prefixMatch) {
     const prefix = prefixMatch[1].toLowerCase();
     const cleanText = text.slice(prefixMatch[0].length);
@@ -122,6 +145,9 @@ export async function classifyThought(
       idea: "ideas",
       ideas: "ideas",
       admin: "admin",
+      vocab: "vocabulary",
+      vocabulary: "vocabulary",
+      word: "vocabulary",
     };
     const destination = destinationMap[prefix];
 
