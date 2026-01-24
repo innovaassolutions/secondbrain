@@ -46,7 +46,7 @@ export interface VocabularyFields {
   word: string;
   definition: string;
   partOfSpeech: string | null;
-  example: string | null;
+  example: string;
   source: string | null;
 }
 
@@ -118,7 +118,7 @@ For "vocabulary", extract:
     "word": "The vocabulary word",
     "definition": "Clear definition of the word",
     "partOfSpeech": "noun/verb/adjective/adverb/etc or null if unknown",
-    "example": "Example sentence using the word, or null",
+    "example": "REQUIRED: An example sentence demonstrating the word in context. If no example is provided in the input, create a clear, practical example sentence.",
     "source": "Where the word was encountered (book, article, conversation), or null"
   }
 }

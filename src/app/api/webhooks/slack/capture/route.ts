@@ -147,14 +147,14 @@ async function processCapture(
         word: string;
         definition: string;
         partOfSpeech: string | null;
-        example: string | null;
+        example: string;
         source: string | null;
       };
       recordId = await convex.mutation(api.vocabulary.create, {
         word: fields.word || title,
         definition: fields.definition || "",
         partOfSpeech: fields.partOfSpeech || undefined,
-        example: fields.example || undefined,
+        example: fields.example,
         source: fields.source || undefined,
       });
     }
@@ -289,14 +289,14 @@ async function processFix(
         word: string;
         definition: string;
         partOfSpeech: string | null;
-        example: string | null;
+        example: string;
         source: string | null;
       };
       recordId = await convex.mutation(api.vocabulary.create, {
         word: fields.word || title,
         definition: fields.definition || "",
         partOfSpeech: fields.partOfSpeech || undefined,
-        example: fields.example || undefined,
+        example: fields.example,
         source: fields.source || undefined,
       });
     }

@@ -6,7 +6,7 @@ export const create = mutation({
     word: v.string(),
     definition: v.string(),
     partOfSpeech: v.optional(v.string()),
-    example: v.optional(v.string()),
+    example: v.string(),
     source: v.optional(v.string()),
     tags: v.optional(v.array(v.string())),
   },
