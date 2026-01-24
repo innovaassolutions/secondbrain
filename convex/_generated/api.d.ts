@@ -13,6 +13,7 @@ import type * as ideas from "../ideas.js";
 import type * as inboxLog from "../inboxLog.js";
 import type * as people from "../people.js";
 import type * as projects from "../projects.js";
+import type * as vocabulary from "../vocabulary.js";
 
 import type {
   ApiFromModules,
@@ -26,6 +27,7 @@ declare const fullApi: ApiFromModules<{
   inboxLog: typeof inboxLog;
   people: typeof people;
   projects: typeof projects;
+  vocabulary: typeof vocabulary;
 }>;
 
 /**
