@@ -34,13 +34,7 @@ async function generateExample(word: string, definition: string): Promise<string
   return content.text.trim().replace(/^["']|["']$/g, "");
 }
 
-export async function POST(request: NextRequest) {
-  // Verify authorization (use cron secret or implement your own auth)
-  const authHeader = request.headers.get("authorization");
-  if (CRON_SECRET && authHeader !== `Bearer ${CRON_SECRET}`) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
+async function runBackfill() {
   if (!convex) {
     return NextResponse.json(
       { error: "Convex client not initialized" },
@@ -102,4 +96,19 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
+}
+
+// GET handler for Vercel MCP access
+export async function GET() {
+  return runBackfill();
+}
+
+export async function POST(request: NextRequest) {
+  // Verify authorization (use cron secret or implement your own auth)
+  const authHeader = request.headers.get("authorization");
+  if (CRON_SECRET && authHeader !== `Bearer ${CRON_SECRET}`) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  return runBackfill();
 }
