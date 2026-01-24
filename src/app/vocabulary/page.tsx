@@ -167,30 +167,36 @@ export default function VocabularyPage() {
               </div>
 
               {/* Expandable Example */}
-              <div className="mt-4">
-                <button
-                  onClick={() => setExpandedId(expandedId === word._id ? null : word._id)}
-                  className="flex items-center gap-1 text-xs text-zinc-500 transition-colors
-                             hover:text-zinc-700
-                             dark:text-zinc-400 dark:hover:text-zinc-300"
-                >
-                  <svg
-                    className={`h-3 w-3 transition-transform ${expandedId === word._id ? "rotate-90" : ""}`}
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
+              {word.example ? (
+                <div className="mt-4">
+                  <button
+                    onClick={() => setExpandedId(expandedId === word._id ? null : word._id)}
+                    className="flex items-center gap-1 text-xs text-zinc-500 transition-colors
+                               hover:text-zinc-700
+                               dark:text-zinc-400 dark:hover:text-zinc-300"
                   >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
-                  {expandedId === word._id ? "Hide example" : "Show example"}
-                </button>
-                {expandedId === word._id && (
-                  <p className="mt-2 whitespace-pre-wrap rounded-lg bg-zinc-50 p-3 text-sm italic text-zinc-600
-                                dark:bg-zinc-900 dark:text-zinc-400">
-                    "{word.example}"
-                  </p>
-                )}
-              </div>
+                    <svg
+                      className={`h-3 w-3 transition-transform ${expandedId === word._id ? "rotate-90" : ""}`}
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                    {expandedId === word._id ? "Hide example" : "Show example"}
+                  </button>
+                  {expandedId === word._id && (
+                    <p className="mt-2 whitespace-pre-wrap rounded-lg bg-zinc-50 p-3 text-sm italic text-zinc-600
+                                  dark:bg-zinc-900 dark:text-zinc-400">
+                      "{word.example}"
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <p className="mt-4 text-xs text-amber-600 dark:text-amber-400">
+                  No example sentence
+                </p>
+              )}
 
               {/* Source */}
               {word.source && (
